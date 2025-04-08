@@ -22,6 +22,7 @@
 #
 # Helper class to create simplifed sessions suitable for jobs and casper applications, for a full blown OAUTH scene check casper-nginx-broker
 #
+require 'digest'
 
 module SP
   module Job
@@ -201,9 +202,14 @@ module SP
 
       def create_token (session:, duration: nil)
         token = nil
+        ip_hash = Digest::SHA256.hexdigest(session[:forward_for])
+
         5.times do
           token = "#{session[:cluster]}-#{session[:entity_id].to_i}-#{session[:user_id]}-#{SecureRandom.hex(32)}"
-          key = "#{@sid}:oauth:access_token:#{token}"
+          key_with_ip_hash = if !ip_hash.nil? && !ip_hash.empty?
+            "#{@sid}:oauth:access_token:#{token}-#{ip_hash}"
+          end
+          key = "#{@sid}:oauth:access_token:#{token}-#{ip_hash}"
           hset = []
           session.each do |_key, value|
             unless value.nil?
@@ -222,6 +228,19 @@ module SP
                 end
               end
               return token
+            end
+            if !key_with_ip_hash.nil? && !key_with_ip_hash.empty?
+              unless r.exists?(key_with_ip_hash)
+                r.pipelined do |pipeline|
+                  pipeline.hmset(key, hset)
+                  if duration.nil?
+                    pipeline.expire(key, @access_ttl)
+                  else
+                    pipeline.expire(key, duration)
+                  end
+                end
+                return token
+              end
             end
           end
         end
