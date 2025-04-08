@@ -206,7 +206,7 @@ module SP
 
         5.times do
           token = "#{session[:cluster]}-#{session[:entity_id].to_i}-#{session[:user_id]}-#{SecureRandom.hex(32)}"
-          key_with_ip_hash = ip_hash.nil? ? nil : "#{@sid}:oauth:access_token:#{token}-#{ip_hash}"
+          key_with_ip_hash = "#{@sid}:oauth:access_token:#{token}-#{ip_hash}"
           key = "#{@sid}:oauth:access_token:#{token}"
           hset = []
           session.each do |_key, value|
@@ -225,21 +225,19 @@ module SP
                   pipeline.expire(key, duration)
                 end
               end
-              return token
             end
-            if !key_with_ip_hash.nil? && !key_with_ip_hash.empty?
-              unless r.exists?(key_with_ip_hash)
-                r.pipelined do |pipeline|
-                  pipeline.hmset(key, hset)
-                  if duration.nil?
-                    pipeline.expire(key, @access_ttl)
-                  else
-                    pipeline.expire(key, duration)
-                  end
+
+            if !ip_hash.nil? && !r.exists?(key_with_ip_hash)
+              r.pipelined do |pipeline|
+                pipeline.hmset(key_with_ip_hash, hset)
+                if duration.nil?
+                  pipeline.expire(key_with_ip_hash, @access_ttl)
+                else
+                  pipeline.expire(key_with_ip_hash, duration)
                 end
-                return token
               end
             end
+            return token
           end
         end
         return nil
