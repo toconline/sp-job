@@ -202,14 +202,12 @@ module SP
 
       def create_token (session:, duration: nil)
         token = nil
-        ip_hash = Digest::SHA256.hexdigest(session[:forward_for])
+        ip_hash = session[:forward_for].nil? ? nil : Digest::SHA256.hexdigest(session[:forward_for])
 
         5.times do
           token = "#{session[:cluster]}-#{session[:entity_id].to_i}-#{session[:user_id]}-#{SecureRandom.hex(32)}"
-          key_with_ip_hash = if !ip_hash.nil? && !ip_hash.empty?
-            "#{@sid}:oauth:access_token:#{token}-#{ip_hash}"
-          end
-          key = "#{@sid}:oauth:access_token:#{token}-#{ip_hash}"
+          key_with_ip_hash = ip_hash.nil? ? nil : "#{@sid}:oauth:access_token:#{token}-#{ip_hash}"
+          key = "#{@sid}:oauth:access_token:#{token}"
           hset = []
           session.each do |_key, value|
             unless value.nil?
