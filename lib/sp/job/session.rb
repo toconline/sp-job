@@ -202,11 +202,9 @@ module SP
 
       def create_token (session:, duration: nil)
         token = nil
-        ip_hash = session[:forwarded_for].nil? ? nil : Digest::SHA256.hexdigest(session[:forwarded_for])
 
         5.times do
           token = "#{session[:cluster]}-#{session[:entity_id].to_i}-#{session[:user_id]}-#{SecureRandom.hex(32)}"
-          key_with_ip_hash = "#{@sid}:oauth:access_token:#{token}-#{ip_hash}"
           key = "#{@sid}:oauth:access_token:#{token}"
           hset = []
           session.each do |_key, value|
@@ -226,24 +224,11 @@ module SP
                 end
               end
             end
-
-            if !ip_hash.nil? && !r.exists?(key_with_ip_hash)
-              r.pipelined do |pipeline|
-                pipeline.hmset(key_with_ip_hash, hset)
-                if duration.nil?
-                  pipeline.expire(key_with_ip_hash, @access_ttl)
-                else
-                  pipeline.expire(key_with_ip_hash, duration)
-                end
-              end
-            end
             return token
           end
         end
         return nil
       end
-
     end
-
   end
 end
