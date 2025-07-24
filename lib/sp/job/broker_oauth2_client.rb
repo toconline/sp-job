@@ -285,11 +285,11 @@ module SP
         http_response, *http_headers = c.header_str.split(/[\r\n]+/).map(&:strip)
         http_headers = Hash[http_headers.flat_map{ |s| s.scan(/^(\S+): (.+)/) }]
         if 302 == c.response_code
-          if not http_headers.has_key?('Location')
+          if get_header(http_headers, 'Location').nil?
             raise InternalError.new("Response is missing 'Location' header!")
           end
         end
-        Curl::Easy.http_get(http_headers['Location'])
+        Curl::Easy.http_get(get_header(http_headers, 'Location'))
       end
 
       #
@@ -305,17 +305,17 @@ module SP
         http_response, *http_headers = c.header_str.split(/[\r\n]+/).map(&:strip)
         http_headers = Hash[http_headers.flat_map{ |s| s.scan(/^(\S+): (.+)/) }]
         if 302 == c.response_code
-          if not http_headers.has_key?('Location')
+          if get_header(http_headers, 'Location').nil?
             raise InternalError.new("Response is missing 'Location' header!")
           end
-          if false == http_headers['Location'].start_with?("#{a_redirect_uri}")
+          if false == get_header(http_headers, 'Location').start_with?("#{a_redirect_uri}")
             raise InternalError.new("Unable to parse 'Location'")
           end
           h = {
             :http => {
               :status_code => c.response_code,
-              :location    => http_headers['Location'],
-              :params      => Hash[ URI::decode_www_form(URI(http_headers['Location']).query).to_h.map { |k, v| [k.to_sym, v] }]
+              :location    => get_header(http_headers, 'Location'),
+              :params      => Hash[ URI::decode_www_form(URI(get_header(http_headers, 'Location')).query).to_h.map { |k, v| [k.to_sym, v] }]
               },
             }
             if not h[:http][:params][:code]
@@ -383,6 +383,11 @@ module SP
         }
         h[:oauth2] = Hash[ JSON.parse(response.body).to_h.map { |k, v| [k.to_sym, v] }]
         h
+      end
+
+      def get_header(headers, header_key)
+        key = headers.keys.find { |k| k.downcase == header_key.downcase }
+        key ? headers[key] : nil
       end
 
     end # BrokerOAuth2Client
