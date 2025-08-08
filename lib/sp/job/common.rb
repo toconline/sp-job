@@ -699,6 +699,8 @@ module SP
         logger.info(key.inspect.yellow)
         has_rk = current_cluster.redis.get(key)
 
+        logger.info(current_cluster.session.inspect.red)
+
         logger.info("----------------------")
         logger.info(has_rk.inspect.red)
         logger.info("----------------------")
