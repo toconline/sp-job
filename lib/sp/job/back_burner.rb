@@ -21,6 +21,7 @@
 require 'sp/job/pg_connection'
 require 'sp/job/session'
 require 'sp/job/broker'
+require 'sp/job/otp_validation'
 require 'sp/job/internal_broker_exception'
 require 'roadie'
 require 'thread'
@@ -29,7 +30,6 @@ require 'thread'
 # Helper class that encapsulates the objects needed to access each cluster
 #
 class ClusterMember
-
   attr_reader :redis     # TODO TODO remove this after the conquest of lisbon goes live!!!!
 
   attr_reader :session   # access to session driver
@@ -150,6 +150,9 @@ end
 
 module SP
   module Job
+
+    class OtpUnauthorized < ::StandardError
+    end
 
     class JobCancelled < ::StandardError
     end
@@ -344,6 +347,7 @@ module Backburner
 
   class Job
     include SP::Job::Common # to bring in logger and report_error into this class
+    include SP::Job::OtpValidation
 
     # Processes a job and handles any failure, deleting the job once complete
     #
@@ -371,6 +375,14 @@ module Backburner
         task.delete
         return false
       end
+
+      if OtpValidationDefinedOperation.check_operation(td.current_job)
+        logger.info("**** Checking otp")
+        result = valid_redis_otp?()
+        logger.info("**** OK: #{result}")
+        raise ::SP::Job::OtpUnauthorized unless result
+      end
+
       # Execute the job
       @hooks.around_hook_events(job_class, :around_perform, *args) do
         # We subtract one to ensure we timeout before beanstalkd does, except if:
@@ -609,6 +621,8 @@ Backburner.configure do |config|
               raise_error(message: e)
             elsif e.is_a?(::SP::Job::EasyHttpClient::Error)
               raise_error(message: e.status, status_code: e.code)
+            elsif e.is_a?(::SP::Job::OtpUnauthorized)
+              raise_error(message: 'O código que inseriu expirou ou é inválido. Por favor tente novamente.')
             else
               if td.tube_options[:simpleapi]
                 raise_error(message: e.message)

@@ -31,7 +31,6 @@ module SP
       include SP::Job::Lock
 
       ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-      OPS_TO_AUDIT = [{ tube: 'open-banking-accounts-ops', action: 'edit-account' }]
 
       class Exception < StandardError
 
@@ -688,22 +687,6 @@ module SP
         job      = args[:job]
         tube     = args[:tube] || $args[:program_name]
         raise 'missing job argument' unless args[:job]
-
-        logger.info(args.inspect.red)
-        logger.info "x.x.x.x.x.xx.x.x.x.xx.x.x."
-        logger.info(thread_data.inspect.blue)
-
-        access_token = thread_data.current_job[:access_token]
-        key = "#{$config[:service_id]}:auth:2fa:verified:#{access_token}"
-
-        logger.info(key.inspect.yellow)
-        has_rk = current_cluster.redis.get(key)
-
-        logger.info(current_cluster.session.inspect.red)
-
-        logger.info("----------------------")
-        logger.info(has_rk.inspect.red)
-        logger.info("----------------------")
 
         validity = args[:validity] || 180
         ttr      = args[:ttr]      || 60
