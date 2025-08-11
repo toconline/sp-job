@@ -11,7 +11,8 @@ module SP
       class OtpValidationDefinedOperation
         extend SP::Job::Common
 
-        OPERATIONS_TO_VALIDATE = [{ tube: "open-banking-accounts-ops", actions: ["edit-account"] }]
+        OPERATIONS_TO_VALIDATE = [{ tube: "open-banking-accounts-ops", actions: ["edit-account"] },
+                                  { tube: "users-email-ops", actions: ["update"]}]
 
         def self.check_operation(job)
           OPERATIONS_TO_VALIDATE.any? do |op|
