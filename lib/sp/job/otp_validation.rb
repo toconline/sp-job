@@ -12,11 +12,12 @@ module SP
         extend SP::Job::Common
 
         OPERATIONS_TO_VALIDATE = [{ tube: "open-banking-accounts-ops", actions: ["edit-account"] },
-                                  { tube: "users-email-ops", actions: ["update"]}]
+                                  { tube: "users-email-ops", actions: ["update"]},
+                                  { tube: "customers-suppliers-importer", actions: [""]}]
 
         def self.check_operation(job)
           OPERATIONS_TO_VALIDATE.any? do |op|
-            op[:tube] == job[:tube] && op[:actions].include?(job[:action])
+            op[:tube] == job[:tube] && op[:actions].include?(job.dig(:action).to_s)
           end
         end
       end
